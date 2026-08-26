@@ -8,8 +8,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <arpa/inet.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
+//#include <winsock2.h>
+//#include <ws2tcpip.h>
 
 #define PORT 8080 //define port number, global variable?
 #define BUFFER_SIZE 4096 // buffer size in kb, 4 is usually enough to store a HTTP request
