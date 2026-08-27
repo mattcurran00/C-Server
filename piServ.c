@@ -6,6 +6,11 @@
 
 #define PORT 8000
 #define BUFF_SIZE 4096
+#define PAGE 8192
+
+void readRequest(int clientfd, char *buffer);
+void routeRequest(int cfd, char *method, char *path);
+void rHomePage(int cfd);
 
 int main() {
 
@@ -60,113 +65,68 @@ int main() {
             continue;
         }
 
-        // Read HTTP request
-        ssize_t bytesReceived = read(
-            clientfd,
-            buffer,
-            BUFF_SIZE - 1
-        );
-
-        if (bytesReceived <= 0) {
-            close(clientfd);
-            continue;
-        }
-
-        // Null terminate request
-        buffer[bytesReceived] = '\0';
-
-        // Extract HTTP method and path
-        char method[16];
-        char path[256];
-
-        sscanf(
-            buffer,
-            "%15s %255s",
-            method,
-            path
-        );
-
-        printf("Method: %s\n", method);
-        printf("Path: %s\n", path);
-        fflush(stdout);
-
-        // Handle /
-        if (strcmp(path, "/") == 0) {
-
-            FILE *file = fopen("public/index.html", "r");
-
-            if (file == NULL) {
-                perror("fopen");
-                close(clientfd);
-                continue;
-            }
-
-            char html[8192];
-
-            size_t bytesRead = fread(
-                html,
-                1,
-                sizeof(html) - 1,
-                file
-            );
-
-            html[bytesRead] = '\0';
-
-            fclose(file);
-
-            // Build HTTP response header
-            char responseHeader[256];
-
-            snprintf(
-                responseHeader,
-                sizeof(responseHeader),
-                "HTTP/1.1 200 OK\r\n"
-                "Content-Type: text/html\r\n"
-                "Content-Length: %zu\r\n"
-                "\r\n",
-                bytesRead
-            );
-
-            // Send HTTP header
-            write(
-                clientfd,
-                responseHeader,
-                strlen(responseHeader)
-            );
-
-            // Send HTML
-            write(
-                clientfd,
-                html,
-                bytesRead
-            );
-
-            printf("Served public/index.html\n");
-        }
-
-        // Handle unknown paths
-        else {
-
-            char *response =
-                "HTTP/1.1 404 Not Found\r\n"
-                "Content-Type: text/plain\r\n"
-                "\r\n"
-                "404 Not Found";
-
-            write(
-                clientfd,
-                response,
-                strlen(response)
-            );
-
-            printf("404: %s\n", path);
-        }
-
-        // Close connection
+        readRequest(clientfd, buffer);
         close(clientfd);
     }
 
     close(serverfd);
 
     return 0;
+}
+
+void routeRequest(int cfd, char *method, char *path){
+
+    if(strcmp(method, "GET") == 0){
+        if(strcmp(path, "/") == 0){
+            rHomePage(cfd);
+        }
+    }
+    return;
+}
+
+void rHomePage(int cfd){
+
+    FILE *file = fopen("public/html/index.html", "r");
+
+    if(file == NULL){
+        perror("fopen");
+        return;
+    }
+
+    char html[PAGE];
+    size_t bRead = fread(html, 1, sizeof(html) - 1, file);
+    html[bRead] = '\0';
+    fclose(file);
+
+    char responseHeader[256];
+    snprintf(responseHeader, sizeof(responseHeader),
+    "HTTP/1.1 200 OK\r\n"
+    "Content-Type: text/html\r\n"
+    "Content-Length: %zu\r\n"
+    "\r\n",
+    bRead);  //isnt that lovely
+
+    write(cfd, responseHeader, strlen(responseHeader));
+    write(cfd, html, bRead);
+
+    printf("Served public/index.html\n");
+}
+
+void readRequest(int clientfd, char *buffer){
+
+    ssize_t bRecv = read(clientfd, buffer, BUFF_SIZE - 1);
+
+    if(bRecv <= 0){
+        close(clientfd);
+        return;
+    }
+    
+    buffer[bRecv] = '\0'; //null terminate request
+
+    char method[16];
+    char path[256];
+
+    sscanf(buffer, "%15s %255s", method, path);
+
+    routeRequest(clientfd, method, path);
 }
