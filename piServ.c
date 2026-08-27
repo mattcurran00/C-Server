@@ -82,6 +82,10 @@ void routeRequest(int cfd, char *method, char *path){
             serve(cfd, "/index.html");
             return;
         }
+        else{
+            serve(cfd, "/404.html");
+            return;
+        }
     }
     return;
 }
@@ -101,6 +105,8 @@ void readRequest(int clientfd, char *buffer){
     char path[256];
 
     sscanf(buffer, "%15s %255s", method, path);
+
+    printf("DEBUG: %s %s\n", method, path);
 
     routeRequest(clientfd, method, path);
 }
