@@ -6,11 +6,12 @@
 
 #define PORT 8000
 #define BUFF_SIZE 4096
-#define PAGE 8192
 
 void readRequest(int clientfd, char *buffer);
 void routeRequest(int cfd, char *method, char *path);
-void rHomePage(int cfd);
+void buildResponse(char *response, size_t bRead, size_t responseSize);
+char *getDir(char *path);
+void serve(int cfd, char *path);
 
 int main() {
 
@@ -78,41 +79,11 @@ void routeRequest(int cfd, char *method, char *path){
 
     if(strcmp(method, "GET") == 0){
         if(strcmp(path, "/") == 0){
-            rHomePage(cfd);
+            serve(cfd, "/index.html");
+            return;
         }
     }
     return;
-}
-
-void rHomePage(int cfd){
-
-    FILE *file = fopen("public/html/index.html", "r");
-
-    if(file == NULL){
-        perror("fopen");
-        return;
-    }
-    fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    char *html = malloc(fileSize);
-    size_t bRead = fread(html, 1, fileSize, file);
-    html[bRead] = '\0';
-    fclose(file);
-
-    char responseHeader[256];
-    snprintf(responseHeader, sizeof(responseHeader),
-    "HTTP/1.1 200 OK\r\n"
-    "Content-Type: text/html\r\n"
-    "Content-Length: %zu\r\n"
-    "\r\n",
-    bRead);  //isnt that lovely
-
-    write(cfd, responseHeader, strlen(responseHeader));
-    write(cfd, html, bRead);
-
-    printf("Served public/index.html\n");
 }
 
 void readRequest(int clientfd, char *buffer){
@@ -132,4 +103,84 @@ void readRequest(int clientfd, char *buffer){
     sscanf(buffer, "%15s %255s", method, path);
 
     routeRequest(clientfd, method, path);
+}
+
+void serve(int cfd, char *path){
+
+    char filePath[256];
+    char response[256];
+
+    char *directory = getDir(path);
+
+    if(directory == NULL){
+        printf("ERROR: Unsupported File Type!\n");
+        return;
+    }
+    snprintf(filePath, sizeof(filePath), "public/%s%s", directory, path); //and now we have the path
+
+    FILE *file = fopen(filePath, "r");
+    if(file == NULL){
+        perror("fopen");
+        return;
+    }
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    if(fileSize < 0){
+        fprintf(stderr, "ERROR: Could not determine file size!\n");
+        fclose(file);
+        return;
+    }
+    char *servedFile = malloc(fileSize);
+
+    if(servedFile == NULL){
+        fprintf(stderr, "ERROR: Failed to allocate memory!\n");
+        fclose(file);
+        return;
+    }
+
+    size_t bRead = fread(servedFile, 1, fileSize, file);
+    fclose(file);
+
+    buildResponse(response, bRead, sizeof(response));
+
+    write(cfd, response, strlen(response));
+    write(cfd, servedFile, bRead);
+
+    printf("DEBUG: Serving...\n");
+
+    free(servedFile);
+}
+
+/**
+ * helper function to determine what path to use when using the local filesystem
+ */
+char *getDir(char *path){
+
+    char *extension = strrchr(path, '.');
+
+    if (extension == NULL){
+        return NULL;
+    }
+    if (strcmp(extension, ".html") == 0){
+        return "html";
+    }
+    if (strcmp(extension, ".js") == 0) {
+        return "js";
+    }
+
+    return NULL;
+}
+
+void buildResponse(char *response, size_t bRead, size_t responseSize){
+
+    snprintf(response, responseSize,
+    "HTTP/1.1 200 OK\r\n"
+    "Content-Type: text/html\r\n"
+    "Content-Length: %zu\r\n"
+    "\r\n",
+    bRead);
+
+    return;
 }
