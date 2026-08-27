@@ -92,9 +92,12 @@ void rHomePage(int cfd){
         perror("fopen");
         return;
     }
+    fseek(file, 0, SEEK_END);
+    long fileSize = ftell(file);
+    fseek(file, 0, SEEK_SET);
 
-    char html[PAGE];
-    size_t bRead = fread(html, 1, sizeof(html) - 1, file);
+    char *html = malloc(fileSize);
+    size_t bRead = fread(html, 1, fileSize, file);
     html[bRead] = '\0';
     fclose(file);
 
