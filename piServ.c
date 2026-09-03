@@ -162,22 +162,22 @@ void serve(int cfd, char *path){
 /**
  * helper function to determine what path to use when using the local filesystem
  */
-char *getDir(char *path){
+// char *getDir(char *path){
 
-    char *extension = strrchr(path, '.');
+//     char *extension = strrchr(path, '.');
 
-    if (extension == NULL){
-        return NULL;
-    }
-    if (strcmp(extension, ".html") == 0){
-        return "html";
-    }
-    if (strcmp(extension, ".js") == 0) {
-        return "js";
-    }
+//     if (extension == NULL){
+//         return NULL;
+//     }
+//     if (strcmp(extension, ".html") == 0){
+//         return "html";
+//     }
+//     if (strcmp(extension, ".js") == 0) {
+//         return "js";
+//     }
 
-    return NULL;
-}
+//     return NULL;
+// }
 
 void buildResponse(char *response, size_t bRead, size_t responseSize){
 
